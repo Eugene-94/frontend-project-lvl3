@@ -43,9 +43,12 @@
     "webpack-cli": "^3.3.12"
   },
   "dependencies": {
+    "@babel/polyfill": "^7.10.1",
     "axios": "^0.19.2",
     "bootstrap": "^4.5.0",
+    "i18next": "^19.5.1",
     "jquery": "^3.5.1",
+    "lodash": "^4.17.15",
     "melanke-watchjs": "^1.5.2",
     "popper.js": "^1.16.1",
     "yup": "^0.29.1"

@@ -1,18 +1,59 @@
 import 'bootstrap';
+import _ from 'lodash';
 import * as yup from 'yup';
 import './styles/styles.scss';
 import { watch } from 'melanke-watchjs';
 import axios from 'axios';
+import i18next from 'i18next';
 import parse from './domParser';
+import renderFeed from './feedRenderer';
+import resources from './locales';
+
+const routes = {
+  urls: [],
+};
 
 const schema = yup.object().shape({
-  url: yup.string().url().required(),
+  url: yup
+    .string()
+    .required(i18next.t('errors.required'))
+    .url('Type correct URL')
+    .notOneOf(routes.urls, 'You have already searched this url'),
 });
 
-const state = {
-  isValid: true,
-  urls: [],
-  data: [],
+const validate = (fields) => {
+  try {
+    schema.validateSync(fields, { abortEarly: false });
+    return {};
+  } catch (e) {
+    return _.keyBy(e.inner, 'path');
+  }
+};
+
+const updateValidationState = (state) => {
+  const errors = validate(state.fields);
+  if (_.isEqual(errors, {})) {
+    _.set(state, 'isValid', true);
+    _.set(state, 'errors', {});
+    routes.urls = [...routes.urls, state.fields.url];
+  } else {
+    _.set(state, 'isValid', false);
+    _.set(state, 'errors', errors);
+  }
+};
+
+const getData = (state) => {
+  const dataArray = [];
+  const promises = [];
+
+  routes.urls.forEach((url) => {
+    promises.push(axios.get(url).then(({ data }) => {
+      const dataItems = parse(data);
+      dataArray.push(dataItems);
+    }));
+  });
+
+  Promise.all(promises).then(() => _.set(state, 'data', dataArray));
 };
 
 const elements = {
@@ -21,69 +62,69 @@ const elements = {
   input: document.querySelector('.url-input'),
 };
 
-elements.form.addEventListener('submit', (e) => {
-  e.preventDefault();
-});
+const renderErrors = (element, errors) => {
+  const errorElement = element.nextElementSibling;
+  const error = errors.url;
 
-elements.input.addEventListener('change', ({ target }) => {
-  const current = target.value;
+  if (errorElement) {
+    element.classList.remove('is-invalid');
+    errorElement.remove();
+  }
+  if (!error) {
+    return;
+  }
+  const { type } = error;
+  const message = i18next.t(`errors.${type}`);
 
-  schema
-    .isValid({
-      url: current,
-    })
-    .then((valid) => {
-      if (valid) {
-        state.isValid = true;
-        state.urls.push(current);
-        elements.input.value = '';
-      } else {
-        state.isValid = false;
-      }
-    });
-});
+  const feedbackElement = document.createElement('div');
+  feedbackElement.classList.add('invalid-feedback');
+  feedbackElement.innerHTML = message;
+  element.classList.add('is-invalid');
+  element.after(feedbackElement);
+};
 
-const getData = (urls) => {
-  urls.forEach((url) => {
-    axios.get(url).then(({ data }) => {
-      const dataItems = parse(data);
-      state.data.push(dataItems);
-    });
+const app = () => {
+  const state = {
+    isValid: false,
+    fields: {
+      url: '',
+    },
+    data: [],
+  };
+
+  elements.input.addEventListener('change', ({ target }) => {
+    const { value, name } = target;
+    const fieldValue = value;
+    const fieldName = name;
+
+    state.fields[fieldName] = fieldValue;
+    updateValidationState(state);
+  });
+
+  elements.form.addEventListener('submit', (e) => {
+    e.preventDefault();
+
+    const feedsContainer = document.querySelector('.feeds');
+    feedsContainer.innerHTML = '';
+
+    const { isValid } = state;
+    if (isValid) {
+      elements.input.value = '';
+      getData(state);
+    }
+  });
+
+  watch(state, 'errors', () => {
+    renderErrors(elements.input, state.errors);
+  });
+
+  watch(state, 'data', () => {
+    renderFeed(elements, state.data);
   });
 };
 
-const renderFeed = (data) => {
-  data.forEach((channel) => {
-    const { channelTitle, channelFeed } = channel;
-    const div = document.createElement('div');
-    const h3 = document.createElement('h3');
-    h3.textContent = channelTitle;
-    div.append(h3);
-
-    channelFeed.forEach((feedItem) => {
-      const { title, link } = feedItem;
-      const p = document.createElement('p');
-      const a = document.createElement('a');
-      a.setAttribute('href', link);
-      a.textContent = title;
-      p.append(a);
-      div.append(p);
-    });
-
-    elements.pageContainer.append(div);
-  });
-};
-
-watch(state, 'isValid', () => {
-  elements.input.classList.toggle('is-invalid');
-});
-
-watch(state, 'urls', () => {
-  const { urls } = state;
-  getData(urls);
-});
-
-watch(state, 'data', () => {
-  const { data } = state;
-  renderFeed(data);
-});
+i18next.init({
+  lng: 'en',
+  debug: true,
+  resources,
+}).then(app());
