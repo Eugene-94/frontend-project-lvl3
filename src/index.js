@@ -1,5 +1,6 @@
 import 'bootstrap';
 import _ from 'lodash';
+import CRC32 from 'crc-32';
 import * as yup from 'yup';
 import './styles/styles.scss';
 import { watch } from 'melanke-watchjs';
@@ -8,6 +9,9 @@ import i18next from 'i18next';
 import parse from './domParser';
 import renderFeed from './feedRenderer';
 import resources from './locales';
+
+const PROXY = 'https://cors-anywhere.herokuapp.com/';
+const UPDATE_TIMING = 5000;
 
 const routes = {
   urls: [],
@@ -18,7 +22,7 @@ const schema = yup.object().shape({
     .string()
     .required(i18next.t('errors.required'))
     .url('Type correct URL')
-    .notOneOf(routes.urls, 'You have already searched this url'),
+    .notOneOf(routes.urls),
 });
 
 const validate = (fields) => {
@@ -34,6 +38,7 @@ const updateValidationState = (state) => {
   const errors = validate(state.fields);
   if (_.isEqual(errors, {})) {
     _.set(state, 'isValid', true);
+    _.set(state, 'url', state.fields.url);
     _.set(state, 'errors', {});
     routes.urls = [...routes.urls, state.fields.url];
   } else {
@@ -42,18 +47,73 @@ const updateValidationState = (state) => {
   }
 };
 
-const getData = (state) => {
-  const dataArray = [];
+const renderUpdate = (data) => {
+  const { channelTitle, diff } = data;
+  const id = CRC32.str(channelTitle);
+  const feedContainer = document.getElementById(id);
+  const h3 = feedContainer.querySelector('h3');
+  diff.forEach((feedItem) => {
+    const { title, link } = feedItem;
+    const p = document.createElement('p');
+    const a = document.createElement('a');
+    a.setAttribute('href', link);
+    a.textContent = title;
+    p.append(a);
+    h3.after(p);
+  });
+};
+
+const getProxyUrl = (link) => {
+  const url = new URL(link);
+
+  return `${PROXY}${url.hostname}${url.pathname}${url.search}`;
+};
+
+const buildDiff = (newData, oldData) => {
+  const diffs = newData.map((channel) => {
+    const { channelTitle } = channel;
+    const oldChannel = _.head(oldData.filter((item) => item.channelTitle === channelTitle));
+    const diff = _.differenceBy(channel.channelFeed, oldChannel.channelFeed, 'title');
+
+    return { channelTitle, diff };
+  });
+
+  return diffs.filter((item) => item.diff.length > 0);
+};
+
+const updateFeed = (state) => {
+  const newData = [];
   const promises = [];
 
   routes.urls.forEach((url) => {
-    promises.push(axios.get(url).then(({ data }) => {
+    promises.push(axios.get(getProxyUrl(url)).then(({ data }) => {
       const dataItems = parse(data);
-      dataArray.push(dataItems);
+      newData.push(dataItems);
     }));
   });
 
-  Promise.all(promises).then(() => _.set(state, 'data', dataArray));
+  Promise.all(promises).then(() => {
+    const oldData = state.data;
+    const diff = buildDiff(newData, oldData);
+
+    if (diff.length > 0) {
+      renderUpdate(...diff);
+      _.set(state, 'data', newData);
+    }
+  });
+
+  return (() => setTimeout(updateFeed, UPDATE_TIMING, state))();
+};
+
+const getData = (url, state) => {
+  const stateData = state.data;
+
+  axios.get(getProxyUrl(url)).then(({ data }) => {
+    const dataItems = parse(data);
+    _.set(state, 'data', [...stateData, dataItems]);
+    renderFeed(dataItems);
+    setTimeout(updateFeed, UPDATE_TIMING, state);
+  });
 };
 
 const elements = {
@@ -86,6 +146,7 @@ const renderErrors = (element, errors) => {
 const app = () => {
   const state = {
     isValid: false,
+    url: '',
     fields: {
       url: '',
     },
@@ -104,13 +165,9 @@ const app = () => {
   elements.form.addEventListener('submit', (e) => {
     e.preventDefault();
 
-    const feedsContainer = document.querySelector('.feeds');
-    feedsContainer.innerHTML = '';
-
     const { isValid } = state;
     if (isValid) {
       elements.input.value = '';
-      getData(state);
     }
   });
 
@@ -118,8 +175,9 @@ const app = () => {
     renderErrors(elements.input, state.errors);
   });
 
-  watch(state, 'data', () => {
-    renderFeed(elements, state.data);
+  watch(state, 'url', () => {
+    const { url } = state;
+    getData(url, state);
   });
 };
 
