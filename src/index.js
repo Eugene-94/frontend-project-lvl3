@@ -120,6 +120,7 @@ const elements = {
   pageContainer: document.querySelector('main > div'),
   form: document.querySelector('.url-form'),
   input: document.querySelector('.url-input'),
+  submit: document.querySelector('.url-submit'),
 };
 
 const renderErrors = (element, errors) => {
@@ -169,6 +170,10 @@ const app = () => {
     if (isValid) {
       elements.input.value = '';
     }
+  });
+
+  watch(state, 'isValid', () => {
+    elements.submit.disabled = !state.isValid;
   });
 
   watch(state, 'errors', () => {
