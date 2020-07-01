@@ -1,17 +1,36 @@
-export default (data) => {
+import _ from 'lodash';
+
+const generateId = (title, data) => {
+  const filtered = _.head(data.filter((item) => item.title === title));
+
+  return filtered ? filtered.id : _.uniqueId();
+};
+
+export default (data, state) => {
   const domParser = new DOMParser();
 
-  const xmlDoc = domParser.parseFromString(data, 'text/xml');
-  const items = xmlDoc.querySelectorAll('item');
+  try {
+    const xmlDoc = domParser.parseFromString(data, 'text/xml');
 
-  const channelFeed = [...items].map((item) => {
-    const title = item.querySelector('title').firstChild.data;
-    const link = item.querySelector('link').firstChild.data;
+    const xmlItems = xmlDoc.querySelectorAll('item');
+    const xmlTitle = xmlDoc.querySelector('channel > title');
+    // const id = _.uniqueId();
 
-    return { title, link };
-  });
+    const channelFeed = [...xmlItems].map((item) => {
+      const title = item.querySelector('title');
+      const link = item.querySelector('link');
 
-  const channelTitle = xmlDoc.querySelector('channel > title').firstChild.data;
+      return { title: title.textContent, link: link.textContent };
+    });
 
-  return { channelTitle, channelFeed };
+    const channel = {
+      id: generateId(xmlTitle.textContent, state.data),
+      title: xmlTitle.textContent,
+      items: channelFeed,
+    };
+
+    return channel;
+  } catch (err) {
+    throw new Error(err);
+  }
 };

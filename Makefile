@@ -10,6 +10,10 @@ build:
 	rm -rf dist
 	npm run build
 
+dev:
+	rm -rf dist
+	npm run dev
+
 test:
 	npm test
 

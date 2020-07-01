@@ -1,24 +1,23 @@
-import CRC32 from 'crc-32';
-
-export default (data) => {
-  const feeds = document.querySelector('.feeds > .row');
-  const { channelTitle, channelFeed } = data;
+export default (data, elements) => {
+  const { title, items, id } = data;
   const div = document.createElement('div');
   div.setAttribute('class', 'feeds-list col-lg-6');
-  div.setAttribute('id', CRC32.str(channelTitle));
+  div.setAttribute('id', id);
   const h3 = document.createElement('h3');
-  h3.textContent = channelTitle;
+  h3.textContent = title;
   div.append(h3);
 
-  channelFeed.forEach((feedItem) => {
-    const { title, link } = feedItem;
+  items.forEach((feedItem) => {
+    const itemTitle = feedItem.title;
+    const itemLink = feedItem.link;
+
     const p = document.createElement('p');
     const a = document.createElement('a');
-    a.setAttribute('href', link);
-    a.textContent = title;
+    a.setAttribute('href', itemLink);
+    a.textContent = itemTitle;
     p.append(a);
     div.append(p);
   });
 
-  feeds.append(div);
+  elements.feeds.append(div);
 };
