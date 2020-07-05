@@ -4,39 +4,15 @@ import * as yup from 'yup';
 import './styles/styles.scss';
 import axios from 'axios';
 import i18next from 'i18next';
+import onChange from 'on-change';
 import parse from './domParser';
 import renderFeed from './feedRenderer';
 import resources from './locales';
+import { identFeeds, getProxyUrl } from './utils';
 
-const onChange = require('on-change');
-
-const PROXY = 'https://cors-anywhere.herokuapp.com/';
 const UPDATE_TIMING = 5000;
 
-const routes = {
-  urls: [],
-};
-const schema = yup.object().shape({
-  url: yup
-    .string()
-    .required()
-    .url()
-    .test(
-      'is-loaded',
-      'The feed has already loaded',
-      (value) => !routes.urls.includes(value),
-    ),
-});
-
-const elements = {
-  pageContainer: document.querySelector('main > div'),
-  form: document.querySelector('.url-form'),
-  input: document.querySelector('.url-input'),
-  submit: document.querySelector('.url-submit'),
-  feeds: document.querySelector('.feeds > .row'),
-};
-
-const validate = (fields) => {
+const validate = (fields, schema) => {
   try {
     schema.validateSync(fields, { abortEarly: false });
     return {};
@@ -45,14 +21,13 @@ const validate = (fields) => {
   }
 };
 
-const updateValidationState = (state) => {
-  const errors = validate(state.fields);
+const updateValidationState = (state, schema) => {
+  const errors = validate(state.form.fields, schema);
   if (_.isEqual(errors, {})) {
-    _.set(state, 'isValid', true);
-    _.set(state, 'url', state.fields.url);
+    _.set(state.form, 'isValid', true);
     _.set(state, 'errors', {});
   } else {
-    _.set(state, 'isValid', false);
+    _.set(state.form, 'isValid', false);
     _.set(state, 'errors', errors);
   }
 };
@@ -72,12 +47,6 @@ const renderUpdate = (data) => {
   });
 };
 
-const getProxyUrl = (link) => {
-  const url = new URL(link);
-
-  return `${PROXY}${url.hostname}${url.pathname}${url.search}`;
-};
-
 const buildDiff = (newData, oldData) => {
   const diffs = newData.map((channel) => {
     const { title } = channel;
@@ -95,20 +64,20 @@ const updateFeed = (state) => {
   const newData = [];
   const promises = [];
 
-  routes.urls.forEach((url) => {
+  state.routes.forEach((url) => {
     promises.push(axios.get(getProxyUrl(url)).then(({ data }) => {
-      const dataItems = parse(data, state);
+      const dataItems = identFeeds(parse(data), state);
       newData.push(dataItems);
     }));
   });
 
   Promise.all(promises).then(() => {
-    const oldData = state.data;
+    const oldData = state.feeds;
     const diff = buildDiff(newData, oldData);
 
     if (diff.length > 0) {
       renderUpdate(...diff);
-      _.set(state, 'data', newData);
+      _.set(state, 'feeds', newData);
     }
   });
 
@@ -116,18 +85,18 @@ const updateFeed = (state) => {
 };
 
 const getData = (url, state) => {
-  const stateData = state.data;
-  _.set(state, 'status', 'processing');
+  const stateData = state.feeds;
+  _.set(state.form, 'status', 'processing');
 
   axios.get(getProxyUrl(url)).then(({ data }) => {
     try {
-      const dataItems = parse(data, state);
-      _.set(state, 'data', [...stateData, dataItems]);
-      _.set(state, 'status', 'filling');
-      renderFeed(dataItems, elements);
+      const dataItems = identFeeds(parse(data), state);
+      _.set(state, 'feeds', [...stateData, dataItems]);
+      _.set(state.form, 'status', 'filling');
+      renderFeed(dataItems);
       setTimeout(updateFeed, UPDATE_TIMING, state);
     } catch (e) {
-      _.set(state, 'status', 'failed');
+      _.set(state.form, 'status', 'failed');
       _.set(state, 'errors', { url: { type: 'parse' } });
     }
   });
@@ -135,6 +104,7 @@ const getData = (url, state) => {
 
 const renderErrors = (element, errors) => {
   const errorElement = document.querySelector('.feedback');
+  const form = element.closest('form');
   const error = errors.url;
 
   if (errorElement) {
@@ -152,38 +122,61 @@ const renderErrors = (element, errors) => {
   feedbackElement.classList.add('text-danger');
   feedbackElement.innerHTML = message;
   element.classList.add('is-invalid');
-  elements.form.after(feedbackElement);
+  form.after(feedbackElement);
 };
 
-const app = () => {
+const appInit = () => {
   const state = {
-    status: 'filling',
-    isValid: false,
-    url: '',
-    fields: {
-      url: '',
+    form: {
+      status: 'filling',
+      isValid: false,
+      fields: {
+        url: '',
+      },
     },
-    data: [],
+    routes: [],
+    feeds: [],
   };
 
+  const elements = {
+    pageContainer: document.querySelector('main > div'),
+    form: document.querySelector('.url-form'),
+    input: document.querySelector('.url-input'),
+    submit: document.querySelector('.url-submit'),
+  };
+
+  const schema = yup.object().shape({
+    url: yup
+      .string()
+      .required()
+      .url()
+      .test(
+        'is-loaded',
+        'The feed has already loaded',
+        (value) => !state.routes.includes(value),
+      ),
+  });
+
   const watchedState = onChange(state, (path) => {
-    if (path === 'isValid') {
-      elements.submit.disabled = !state.isValid;
+    if (path === 'form.isValid') {
+      elements.submit.disabled = !state.form.isValid;
     }
     if (path === 'errors') {
       renderErrors(elements.input, state.errors);
     }
-    if (path === 'status') {
-      switch (state.status) {
+    if (path === 'form.status') {
+      switch (state.form.status) {
         case 'processing':
           elements.submit.disabled = true;
+          elements.input.disabled = true;
           break;
         case 'failed':
           elements.submit.disabled = true;
           break;
         case 'filling':
           elements.submit.disabled = false;
-          _.set(state, 'url', '');
+          elements.input.disabled = false;
+          _.set(state, 'form.fields.url', '');
           break;
         default:
           throw new Error('unknown status');
@@ -196,24 +189,30 @@ const app = () => {
     const fieldValue = value;
     const fieldName = name;
 
-    watchedState.fields[fieldName] = fieldValue;
-    updateValidationState(watchedState);
+    watchedState.form.fields[fieldName] = fieldValue;
+    updateValidationState(watchedState, schema);
   });
 
   elements.form.addEventListener('submit', (e) => {
     e.preventDefault();
 
-    const { isValid, url } = state;
+    const { isValid } = state.form;
+    const { url } = state.form.fields;
+
     if (isValid) {
       getData(url, watchedState);
       elements.input.value = '';
-      routes.urls.push(state.url);
+      state.routes.push(url);
     }
   });
 };
 
-i18next.init({
-  lng: 'en',
-  debug: true,
-  resources,
-}).then(app());
+const app = () => {
+  i18next.init({
+    lng: 'en',
+    debug: true,
+    resources,
+  }).then(appInit());
+};
+
+app();

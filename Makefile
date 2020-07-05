@@ -7,12 +7,13 @@ install-deps:
 	npm ci
 
 build:
-	rm -rf dist
 	npm run build
 
 dev:
-	rm -rf dist
 	npm run dev
+
+start:
+	npm run start
 
 test:
 	npm test

@@ -1,5 +1,6 @@
-export default (data, elements) => {
+export default (data) => {
   const { title, items, id } = data;
+  const feedsContainer = document.querySelector('.feeds > .row');
   const div = document.createElement('div');
   div.setAttribute('class', 'feeds-list col-lg-6');
   div.setAttribute('id', id);
@@ -19,5 +20,5 @@ export default (data, elements) => {
     div.append(p);
   });
 
-  elements.feeds.append(div);
+  feedsContainer.append(div);
 };
