@@ -14,7 +14,7 @@ export default (data) => {
   const isParseError = checkParsingError(xmlDoc);
 
   if (isParseError) {
-    return null;
+    throw new Error('There is parsing error');
   }
 
   const xmlItems = xmlDoc.querySelectorAll('item');

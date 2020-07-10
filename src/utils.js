@@ -2,13 +2,13 @@ import _ from 'lodash';
 
 const PROXY = 'https://cors-anywhere.herokuapp.com/';
 
-export const generateIdByTitle = (title, data) => {
+const generateIdByTitle = (title, data) => {
   const filtered = _.head(data.filter((item) => item.title === title));
 
   return filtered ? filtered.id : _.uniqueId();
 };
 
-export const identFeeds = (feed, state) => {
+export const identifyFeeds = (feed, state) => {
   const { title } = feed;
   const id = generateIdByTitle(title, state.feeds);
 
