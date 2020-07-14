@@ -1,5 +1,6 @@
 export default (data) => {
   const { title, items, id } = data;
+
   const feedsContainer = document.querySelector('.feeds > .row');
   const div = document.createElement('div');
   div.setAttribute('class', 'feeds-list col-lg-6');
