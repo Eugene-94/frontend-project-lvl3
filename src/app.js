@@ -174,7 +174,8 @@ const appInit = () => {
       }
     }
     if (path === 'feeds') {
-      if (value.length !== previousValue.length) {
+      const isNewFeed = value.length !== previousValue.length;
+      if (isNewFeed) {
         renderFeed(_.last(value));
       }
     }
