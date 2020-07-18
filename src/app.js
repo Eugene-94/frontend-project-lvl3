@@ -21,17 +21,6 @@ const validate = (fields, schema) => {
   }
 };
 
-const updateValidationState = (state, schema) => {
-  const error = validate(state.form.fields, schema);
-  if (!error) {
-    _.set(state, 'form.isValid', true);
-    _.set(state, 'form.error', '');
-  } else {
-    _.set(state, 'form.isValid', false);
-    _.set(state, 'form.error', error);
-  }
-};
-
 const buildDiff = (newFeeds, oldFeeds) => {
   const diffs = newFeeds.map((channel) => {
     const { title } = channel;
@@ -69,17 +58,21 @@ const getData = (url, state) => {
   const stateData = state.feeds;
   _.set(state, 'form.status', 'processing');
 
-  return axios.get(getProxyUrl(url)).then(({ data }) => {
-    const parsedResponse = parse(data);
-    const dataItems = identifyFeeds(parsedResponse, state);
-    _.set(state, 'isFeedLoaded', true);
-    _.set(state, 'form.status', 'filling');
-    _.set(state, 'feeds', [...stateData, dataItems]);
-  }).catch(({ message }) => {
-    _.set(state, 'form.status', 'failed');
-    _.set(state, 'form.isValid', false);
-    _.set(state, 'form.error', message);
-  });
+  return axios.get(getProxyUrl(url))
+    .then(({ data }) => {
+      const parsedResponse = parse(data);
+      const dataItems = identifyFeeds(parsedResponse, state);
+      _.set(state, 'form.status', 'filling');
+      _.set(state, 'feeds', [...stateData, dataItems]);
+    })
+    .then(() => {
+      state.routes.push(url);
+    })
+    .catch(({ message }) => {
+      _.set(state, 'form.status', 'failed');
+      _.set(state, 'form.isValid', false);
+      _.set(state, 'form.error', message);
+    });
 };
 
 const appInit = () => {
@@ -122,18 +115,17 @@ const appInit = () => {
   elements.form.addEventListener('submit', (e) => {
     e.preventDefault();
 
-    const { value: fieldValue, name: fieldName } = elements.input;
-    watchedState.form.fields[fieldName] = fieldValue;
+    const formData = new FormData(e.target);
+    const url = formData.get('url');
+    const error = validate({ url }, schema);
 
-    updateValidationState(watchedState, schema);
-
-    if (!watchedState.form.error) {
-      const { url } = watchedState.form.fields;
-
-      getData(url, watchedState).then(() => {
-        watchedState.routes.push(url);
-        _.set(watchedState, 'form.fields.url', '');
-      });
+    if (!error) {
+      _.set(watchedState, 'form.isValid', true);
+      _.set(watchedState, 'form.error', '');
+      getData(url, watchedState);
+    } else {
+      _.set(watchedState, 'form.isValid', false);
+      _.set(watchedState, 'form.error', error);
     }
   });
 
