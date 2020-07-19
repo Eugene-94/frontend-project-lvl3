@@ -80,9 +80,6 @@ const appInit = () => {
     form: {
       status: 'filling',
       isValid: false,
-      fields: {
-        url: '',
-      },
       error: '',
     },
     routes: [],
