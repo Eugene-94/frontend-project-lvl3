@@ -1,27 +1,35 @@
-export const renderFeed = (data) => {
+const getFeedItemNode = (feedItem) => {
+  const { title, link } = feedItem;
+
+  const p = document.createElement('p');
+  const a = document.createElement('a');
+  a.setAttribute('href', link);
+  a.textContent = title;
+  p.append(a);
+
+  return p;
+};
+
+export const renderFeed = (data, container) => {
   const { title, items, id } = data;
 
-  const feedsContainer = document.querySelector('.feeds > .row');
-  const div = document.createElement('div');
-  div.setAttribute('class', 'feeds-list col-lg-6');
-  div.setAttribute('id', id);
+  const feedContainer = document.createElement('div');
+  feedContainer.setAttribute('class', 'feed col-lg-6');
+  feedContainer.setAttribute('id', id);
+
+  const feedItemsList = document.createElement('div');
+  feedItemsList.setAttribute('class', 'feeds-list');
+
   const h3 = document.createElement('h3');
   h3.textContent = title;
-  div.append(h3);
+  feedContainer.append(h3);
+  h3.after(feedItemsList);
 
   items.forEach((feedItem) => {
-    const itemTitle = feedItem.title;
-    const itemLink = feedItem.link;
-
-    const p = document.createElement('p');
-    const a = document.createElement('a');
-    a.setAttribute('href', itemLink);
-    a.textContent = itemTitle;
-    p.append(a);
-    div.append(p);
+    feedItemsList.append(getFeedItemNode(feedItem));
   });
 
-  feedsContainer.append(div);
+  container.append(feedContainer);
 };
 
 export const renderErrors = (elements, formState) => {
@@ -39,25 +47,15 @@ export const renderErrors = (elements, formState) => {
 };
 
 export const renderUpdate = (updatedFeeds) => {
-  const feedsContainer = document.querySelector('.feeds > .row');
-  feedsContainer.innerHTML = '';
   updatedFeeds.forEach((feed) => {
-    renderFeed(feed);
+    const { id, items } = feed;
+    const feedItemsListNode = document.querySelector(`#${id} > .feeds-list`);
+    const feedItemsListHtml = items.reduce((acc, item) => {
+      const itemNode = getFeedItemNode(item);
+
+      return `${acc}${itemNode.outerHTML}`;
+    }, '');
+
+    feedItemsListNode.innerHTML = feedItemsListHtml;
   });
 };
-
-// export const renderUpdate = (updatedFeed) => {
-//   const { id, diff } = updatedFeed;
-//   const feedContainer = document.getElementById(id);
-//   const h3 = feedContainer.querySelector('h3');
-
-//   diff.forEach((feedItem) => {
-//     const { title, link } = feedItem;
-//     const p = document.createElement('p');
-//     const a = document.createElement('a');
-//     a.setAttribute('href', link);
-//     a.textContent = title;
-//     p.append(a);
-//     h3.after(p);
-//   });
-// };

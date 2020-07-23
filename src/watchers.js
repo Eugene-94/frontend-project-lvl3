@@ -32,7 +32,7 @@ export default (appElements, state) => {
       const isNewFeed = value.length !== previousValue.length;
 
       if (isNewFeed) {
-        renderFeed(_.last(value));
+        renderFeed(_.last(value), elements.feedsContainer);
       } else {
         renderUpdate(value);
       }

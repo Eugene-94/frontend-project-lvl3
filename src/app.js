@@ -1,3 +1,5 @@
+/* eslint no-param-reassign: 0 */
+
 import 'bootstrap';
 import _ from 'lodash';
 import * as yup from 'yup';
@@ -11,9 +13,9 @@ import { identifyFeeds, getProxyUrl } from './utils';
 
 const UPDATE_TIMING = 5000;
 
-const validate = (fields, schema, state) => {
+const validate = (url, schema, state) => {
   try {
-    schema.notOneOf(state.routes).validateSync(fields, { abortEarly: false });
+    schema.notOneOf(state.routes).validateSync(url, { abortEarly: false });
     return '';
   } catch (e) {
     const { type } = _.head(e.inner);
@@ -84,7 +86,6 @@ const appInit = () => {
     },
     routes: [],
     feeds: [],
-    diff: [],
   };
 
   const elements = {
@@ -93,6 +94,7 @@ const appInit = () => {
     input: document.querySelector('.url-input'),
     submit: document.querySelector('.url-submit'),
     feedback: document.querySelector('.feedback'),
+    feedsContainer: document.querySelector('.feeds > .row'),
   };
 
   const watchedState = watch(elements, state);

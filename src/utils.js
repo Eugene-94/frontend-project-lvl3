@@ -5,7 +5,7 @@ const PROXY = 'https://cors-anywhere.herokuapp.com/';
 const generateIdByTitle = (title, data) => {
   const filtered = _.head(data.filter((item) => item.title === title));
 
-  return filtered ? filtered.id : _.uniqueId();
+  return filtered ? filtered.id : _.uniqueId('feed_');
 };
 
 export const identifyFeeds = (feed, state) => {
