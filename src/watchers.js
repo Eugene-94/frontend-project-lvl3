@@ -1,4 +1,3 @@
-import _ from 'lodash';
 import onChange from 'on-change';
 import { renderFeed, renderUpdate, renderErrors } from './renderers';
 
@@ -32,7 +31,7 @@ export default (appElements, state) => {
       const isNewFeed = value.length !== previousValue.length;
 
       if (isNewFeed) {
-        renderFeed(_.last(value), elements.feedsContainer);
+        renderFeed(value, elements.feedsContainer);
       } else {
         renderUpdate(value);
       }

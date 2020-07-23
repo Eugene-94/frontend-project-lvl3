@@ -1,3 +1,5 @@
+/* eslint no-param-reassign: 0 */
+
 const getFeedItemNode = (feedItem) => {
   const { title, link } = feedItem;
 
@@ -11,25 +13,30 @@ const getFeedItemNode = (feedItem) => {
 };
 
 export const renderFeed = (data, container) => {
-  const { title, items, id } = data;
+  const feedsHtml = data
+    .map((feed) => {
+      const { title, items, id } = feed;
 
-  const feedContainer = document.createElement('div');
-  feedContainer.setAttribute('class', 'feed col-lg-6');
-  feedContainer.setAttribute('id', id);
+      const feedContainer = document.createElement('div');
+      feedContainer.setAttribute('class', 'feed col-lg-6');
+      feedContainer.setAttribute('id', id);
 
-  const feedItemsList = document.createElement('div');
-  feedItemsList.setAttribute('class', 'feeds-list');
+      const feedItemsList = document.createElement('div');
+      feedItemsList.setAttribute('class', 'feeds-list');
 
-  const h3 = document.createElement('h3');
-  h3.textContent = title;
-  feedContainer.append(h3);
-  h3.after(feedItemsList);
+      const h3 = document.createElement('h3');
+      h3.textContent = title;
+      feedContainer.append(h3);
+      h3.after(feedItemsList);
 
-  items.forEach((feedItem) => {
-    feedItemsList.append(getFeedItemNode(feedItem));
-  });
+      items.forEach((feedItem) => {
+        feedItemsList.append(getFeedItemNode(feedItem));
+      });
 
-  container.append(feedContainer);
+      return feedContainer.outerHTML;
+    })
+    .join('');
+  container.innerHTML = feedsHtml;
 };
 
 export const renderErrors = (elements, formState) => {
@@ -50,11 +57,13 @@ export const renderUpdate = (updatedFeeds) => {
   updatedFeeds.forEach((feed) => {
     const { id, items } = feed;
     const feedItemsListNode = document.querySelector(`#${id} > .feeds-list`);
-    const feedItemsListHtml = items.reduce((acc, item) => {
-      const itemNode = getFeedItemNode(item);
+    const feedItemsListHtml = items
+      .map((item) => {
+        const itemNode = getFeedItemNode(item);
 
-      return `${acc}${itemNode.outerHTML}`;
-    }, '');
+        return itemNode.outerHTML;
+      })
+      .join('');
 
     feedItemsListNode.innerHTML = feedItemsListHtml;
   });
