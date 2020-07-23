@@ -38,18 +38,26 @@ export const renderErrors = (elements, formState) => {
   input.classList.add('is-invalid');
 };
 
-export const renderUpdate = (updatedFeed) => {
-  const { id, diff } = updatedFeed;
-  const feedContainer = document.getElementById(id);
-  const h3 = feedContainer.querySelector('h3');
-
-  diff.forEach((feedItem) => {
-    const { title, link } = feedItem;
-    const p = document.createElement('p');
-    const a = document.createElement('a');
-    a.setAttribute('href', link);
-    a.textContent = title;
-    p.append(a);
-    h3.after(p);
+export const renderUpdate = (updatedFeeds) => {
+  const feedsContainer = document.querySelector('.feeds > .row');
+  feedsContainer.innerHTML = '';
+  updatedFeeds.forEach((feed) => {
+    renderFeed(feed);
   });
 };
+
+// export const renderUpdate = (updatedFeed) => {
+//   const { id, diff } = updatedFeed;
+//   const feedContainer = document.getElementById(id);
+//   const h3 = feedContainer.querySelector('h3');
+
+//   diff.forEach((feedItem) => {
+//     const { title, link } = feedItem;
+//     const p = document.createElement('p');
+//     const a = document.createElement('a');
+//     a.setAttribute('href', link);
+//     a.textContent = title;
+//     p.append(a);
+//     h3.after(p);
+//   });
+// };

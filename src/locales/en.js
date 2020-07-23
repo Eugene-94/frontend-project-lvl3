@@ -4,7 +4,7 @@ export default {
       required: 'The field is required',
       url: 'Type correct URL',
       parse: 'The URL is not RSS feed',
-      'is-loaded': 'The feed has already loaded',
+      notOneOf: 'The feed has already loaded',
     },
   },
 };

@@ -30,12 +30,12 @@ export default (appElements, state) => {
     }
     if (path === 'feeds') {
       const isNewFeed = value.length !== previousValue.length;
+
       if (isNewFeed) {
         renderFeed(_.last(value));
+      } else {
+        renderUpdate(value);
       }
-    }
-    if (path === 'diff') {
-      renderUpdate(...value);
     }
   });
 };

@@ -11,9 +11,9 @@ import { identifyFeeds, getProxyUrl } from './utils';
 
 const UPDATE_TIMING = 5000;
 
-const validate = (fields, schema) => {
+const validate = (fields, schema, state) => {
   try {
-    schema.validateSync(fields, { abortEarly: false });
+    schema.notOneOf(state.routes).validateSync(fields, { abortEarly: false });
     return '';
   } catch (e) {
     const { type } = _.head(e.inner);
@@ -21,18 +21,21 @@ const validate = (fields, schema) => {
   }
 };
 
-const buildDiff = (newFeeds, oldFeeds) => {
-  const diffs = newFeeds.map((channel) => {
-    const { title } = channel;
-    const oldChannel = _.head(oldFeeds.filter((item) => item.title === title));
-    const { id } = oldChannel;
-    const diff = _.differenceBy(channel.items, oldChannel.items, 'title');
-
-    return { id, title, diff };
+const getUpdatedFeeds = (oldFeeds, newFeeds) => newFeeds.reduce((acc, newFeed) => {
+  const { id, title, items } = newFeed;
+  const oldTargetFeed = _.head(oldFeeds.filter((oldFeed) => oldFeed.id === id));
+  const oldItems = oldTargetFeed.items;
+  items.forEach((item) => {
+    const isNewPost = !_.some(oldItems, item);
+    if (isNewPost) {
+      oldItems.unshift(item);
+    }
   });
 
-  return diffs.filter((item) => item.diff.length > 0);
-};
+  acc = [{ id, title, items: [...oldItems] }, ...acc];
+  return acc;
+}, []);
+
 
 const updateFeed = (state) => {
   const newFeeds = [];
@@ -45,33 +48,30 @@ const updateFeed = (state) => {
 
   Promise.all(promises).then(() => {
     const oldFeeds = state.feeds;
-    const diff = buildDiff(newFeeds, oldFeeds);
+    const updated = getUpdatedFeeds(oldFeeds, newFeeds);
 
-    if (diff.length > 0) {
-      _.set(state, 'diff', diff);
-      _.set(state, 'feeds', newFeeds);
-    }
+    state.feeds = _.sortBy(updated, ['id']);
   }).finally(setTimeout(updateFeed, UPDATE_TIMING, state));
 };
 
 const getData = (url, state) => {
   const stateData = state.feeds;
-  _.set(state, 'form.status', 'processing');
+  state.form.status = 'processing';
 
   return axios.get(getProxyUrl(url))
     .then(({ data }) => {
       const parsedResponse = parse(data);
       const dataItems = identifyFeeds(parsedResponse, state);
-      _.set(state, 'form.status', 'filling');
-      _.set(state, 'feeds', [...stateData, dataItems]);
+      state.form.status = 'filling';
+      state.feeds = [...stateData, dataItems];
     })
     .then(() => {
       state.routes.push(url);
     })
     .catch(({ message }) => {
-      _.set(state, 'form.status', 'failed');
-      _.set(state, 'form.isValid', false);
-      _.set(state, 'form.error', message);
+      state.form.status = 'failed';
+      state.form.isValid = false;
+      state.form.error = message;
     });
 };
 
@@ -97,42 +97,30 @@ const appInit = () => {
 
   const watchedState = watch(elements, state);
 
-  const schema = yup.object().shape({
-    url: yup
-      .string()
-      .required()
-      .url()
-      .test(
-        'is-loaded',
-        'The feed has already loaded',
-        (value) => !watchedState.routes.includes(value),
-      ),
-  });
+  const schema = yup.string().url().required();
 
   elements.form.addEventListener('submit', (e) => {
     e.preventDefault();
 
     const formData = new FormData(e.target);
     const url = formData.get('url');
-    const error = validate({ url }, schema);
+    const error = validate(url, schema, watchedState);
 
     if (!error) {
-      _.set(watchedState, 'form.isValid', true);
-      _.set(watchedState, 'form.error', '');
+      watchedState.form.isValid = true;
+      watchedState.form.error = '';
       getData(url, watchedState);
     } else {
-      _.set(watchedState, 'form.isValid', false);
-      _.set(watchedState, 'form.error', error);
+      watchedState.form.isValid = false;
+      watchedState.form.error = error;
     }
   });
 
   setTimeout(updateFeed, UPDATE_TIMING, watchedState);
 };
 
-export default () => {
-  i18next.init({
-    lng: 'en',
-    debug: true,
-    resources,
-  }).then(appInit());
-};
+export default () => i18next.init({
+  lng: 'en',
+  debug: true,
+  resources,
+}).then(appInit);

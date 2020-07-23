@@ -17,10 +17,10 @@ export default (data) => {
     throw new Error('There is parsing error');
   }
 
-  const xmlItems = xmlDoc.querySelectorAll('item');
+  const items = xmlDoc.querySelectorAll('item');
   const xmlTitle = xmlDoc.querySelector('channel > title');
 
-  const channelFeed = [...xmlItems].map((item) => {
+  const channelFeed = [...items].map((item) => {
     const title = item.querySelector('title');
     const link = item.querySelector('link');
 
