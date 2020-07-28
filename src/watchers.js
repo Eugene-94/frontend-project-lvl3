@@ -6,7 +6,7 @@ export default (appElements, state) => {
 
   return onChange(state, (path, value, previousValue) => {
     if (path === 'form.error') {
-      renderErrors(elements, state.form);
+      renderErrors(elements, state.form.error);
     }
     if (path === 'form.status') {
       switch (state.form.status) {
@@ -27,13 +27,16 @@ export default (appElements, state) => {
           throw new Error('unknown status');
       }
     }
-    if (path === 'feeds') {
+    if (path === 'networkError') {
+      renderErrors(elements, state.networkError);
+    }
+    if (path === 'posts') {
       const isNewFeed = value.length !== previousValue.length;
 
       if (isNewFeed) {
-        renderFeed(value, elements.feedsContainer);
+        renderFeed(state, elements.feedsContainer);
       } else {
-        renderUpdate(value);
+        renderUpdate(state);
       }
     }
   });

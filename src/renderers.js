@@ -1,4 +1,5 @@
 /* eslint no-param-reassign: 0 */
+import _ from 'lodash';
 
 const getFeedItemNode = (feedItem) => {
   const { title, link } = feedItem;
@@ -12,10 +13,12 @@ const getFeedItemNode = (feedItem) => {
   return p;
 };
 
-export const renderFeed = (data, container) => {
-  const feedsHtml = data
+export const renderFeed = (state, container) => {
+  const { feeds, posts } = state;
+  const feedsHtml = feeds
     .map((feed) => {
-      const { title, items, id } = feed;
+      const { title, id } = feed;
+      const items = _.head(posts.filter((post) => post.id === id)).posts;
 
       const feedContainer = document.createElement('div');
       feedContainer.setAttribute('class', 'feed col-lg-6');
@@ -39,11 +42,10 @@ export const renderFeed = (data, container) => {
   container.innerHTML = feedsHtml;
 };
 
-export const renderErrors = (elements, formState) => {
+export const renderErrors = (elements, error) => {
   const { input, feedback } = elements;
-  const { isValid, error } = formState;
 
-  if (isValid) {
+  if (!error) {
     input.classList.remove('is-invalid');
     feedback.innerHTML = '';
     return;
@@ -53,9 +55,13 @@ export const renderErrors = (elements, formState) => {
   input.classList.add('is-invalid');
 };
 
-export const renderUpdate = (updatedFeeds) => {
-  updatedFeeds.forEach((feed) => {
-    const { id, items } = feed;
+export const renderUpdate = (state) => {
+  const { feeds, posts } = state;
+
+  feeds.forEach((feed) => {
+    const { id } = feed;
+    const items = _.head(posts.filter((post) => post.id === id)).posts;
+
     const feedItemsListNode = document.querySelector(`#${id} > .feeds-list`);
     const feedItemsListHtml = items
       .map((item) => {

@@ -10,9 +10,7 @@ const generateIdByTitle = (title, data) => {
 
 export const identifyFeeds = (feed, state) => {
   const { title } = feed;
-  const id = generateIdByTitle(title, state.feeds);
-
-  return { id, ...feed };
+  return generateIdByTitle(title, state.feeds);
 };
 
 export const getProxyUrl = (link) => {
