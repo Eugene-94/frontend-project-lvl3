@@ -9,7 +9,7 @@ import i18next from 'i18next';
 import parse from './domParser';
 import resources from './locales';
 import watch from './watchers';
-import { identifyFeeds, getProxyUrl } from './utils';
+import getProxyUrl from './utils';
 
 const UPDATE_TIMING = 5000;
 
@@ -19,46 +19,29 @@ const validate = (url, schema, state) => {
   const urlsList = getUrlsList(state.feeds);
   try {
     schema.notOneOf(urlsList).validateSync(url, { abortEarly: false });
-    return '';
+    return null;
   } catch (e) {
     const { type } = _.head(e.inner);
     return i18next.t(`errors.${type}`);
   }
 };
 
-const getUpdatedPosts = (oldPosts, newPosts) => newPosts.reduce((acc, newPost) => {
-  const { id, posts } = newPost;
-  const oldTargetPost = _.head(oldPosts.filter((oldFeed) => oldFeed.id === id));
-  const oldItems = oldTargetPost.posts;
-  posts.forEach((item) => {
-    const isNewPost = !_.some(oldItems, item);
-    if (isNewPost) {
-      oldItems.unshift(item);
-    }
-  });
-
-  acc = [{ id, posts: [...oldItems] }, ...acc];
-  return acc;
-}, []);
-
-
 const updateFeed = (state) => {
   const newPosts = [];
-  const urlsList = getUrlsList(state.feeds);
 
-  const promises = urlsList.map((url) => axios.get(getProxyUrl(url))
+  const promises = state.feeds.map(({ id, url }) => axios.get(getProxyUrl(url))
     .then(({ data }) => {
       const parsedResponse = parse(data);
-      const id = identifyFeeds(parsedResponse, state);
-      const newPost = { id, posts: parsedResponse.items };
-      newPosts.push(newPost);
+      const targetPosts = parsedResponse.items
+        .map(({ title, link }) => ({ feedId: id, title, link }));
+      newPosts.push(...targetPosts);
     }));
 
   Promise.all(promises).then(() => {
     const oldPosts = state.posts;
-    const updated = getUpdatedPosts(oldPosts, newPosts);
+    const updated = _.uniqBy([...newPosts, ...oldPosts], 'title');
 
-    state.posts = _.sortBy(updated, ['id']);
+    state.posts = _.sortBy(updated, ['feedId']);
   }).finally(setTimeout(updateFeed, UPDATE_TIMING, state));
 };
 
@@ -68,12 +51,12 @@ const getData = (url, state) => {
   return axios.get(getProxyUrl(url))
     .then(({ data }) => {
       const parsedResponse = parse(data);
-      const id = identifyFeeds(parsedResponse, state);
+      const id = _.uniqueId('feed_');
       const newFeed = { id, url, title: parsedResponse.title };
-      const newPosts = { id, posts: parsedResponse.items };
+      const newPosts = parsedResponse.items.map(({ title, link }) => ({ feedId: id, title, link }));
 
+      state.posts = [...state.posts, ...newPosts];
       state.feeds = [...state.feeds, newFeed];
-      state.posts = [...state.posts, newPosts];
 
       state.form.status = 'filling';
       state.netWorkError = null;

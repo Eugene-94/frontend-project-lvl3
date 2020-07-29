@@ -1,10 +1,10 @@
 import onChange from 'on-change';
-import { renderFeed, renderUpdate, renderErrors } from './renderers';
+import { renderFeed, renderErrors } from './renderers';
 
 export default (appElements, state) => {
   const elements = appElements;
 
-  return onChange(state, (path, value, previousValue) => {
+  return onChange(state, (path) => {
     if (path === 'form.error') {
       renderErrors(elements, state.form.error);
     }
@@ -31,13 +31,7 @@ export default (appElements, state) => {
       renderErrors(elements, state.networkError);
     }
     if (path === 'posts') {
-      const isNewFeed = value.length !== previousValue.length;
-
-      if (isNewFeed) {
-        renderFeed(state, elements.feedsContainer);
-      } else {
-        renderUpdate(state);
-      }
+      renderFeed(state, elements.feedsContainer);
     }
   });
 };
