@@ -9,9 +9,15 @@ import i18next from 'i18next';
 import parse from './domParser';
 import resources from './locales';
 import watch from './watchers';
-import getProxyUrl from './utils';
 
 const UPDATE_TIMING = 5000;
+const PROXY = 'https://cors-anywhere.herokuapp.com/';
+
+const getProxyUrl = (link) => {
+  const url = new URL(link);
+
+  return `${PROXY}${url.hostname}${url.pathname}${url.search}`;
+};
 
 const getUrlsList = (feeds) => feeds.map(({ url }) => url);
 
@@ -32,16 +38,17 @@ const updateFeed = (state) => {
   const promises = state.feeds.map(({ id, url }) => axios.get(getProxyUrl(url))
     .then(({ data }) => {
       const parsedResponse = parse(data);
-      const targetPosts = parsedResponse.items
-        .map(({ title, link }) => ({ feedId: id, title, link }));
+      const targetPosts = parsedResponse.items.map((item) => ({ feedId: id, ...item }));
       newPosts.push(...targetPosts);
     }));
 
   Promise.all(promises).then(() => {
     const oldPosts = state.posts;
-    const updated = _.uniqBy([...newPosts, ...oldPosts], 'title');
+    const update = _.differenceWith(newPosts, oldPosts, _.isEqual);
 
-    state.posts = _.sortBy(updated, ['feedId']);
+    if (update.length > 0) {
+      state.posts = [...update, ...state.posts];
+    }
   }).finally(setTimeout(updateFeed, UPDATE_TIMING, state));
 };
 
@@ -51,9 +58,9 @@ const getData = (url, state) => {
   return axios.get(getProxyUrl(url))
     .then(({ data }) => {
       const parsedResponse = parse(data);
-      const id = _.uniqueId('feed_');
+      const id = _.uniqueId();
       const newFeed = { id, url, title: parsedResponse.title };
-      const newPosts = parsedResponse.items.map(({ title, link }) => ({ feedId: id, title, link }));
+      const newPosts = parsedResponse.items.map((item) => ({ feedId: id, ...item }));
 
       state.posts = [...state.posts, ...newPosts];
       state.feeds = [...state.feeds, newFeed];
@@ -100,7 +107,7 @@ const appInit = () => {
 
     if (!error) {
       watchedState.form.isValid = true;
-      watchedState.form.error = '';
+      watchedState.form.error = null;
       getData(url, watchedState);
     } else {
       watchedState.form.isValid = false;
