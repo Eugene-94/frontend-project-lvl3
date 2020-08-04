@@ -38,7 +38,7 @@ const updateFeed = (state) => {
   const promises = state.feeds.map(({ id, url }) => axios.get(getProxyUrl(url))
     .then(({ data }) => {
       const parsedResponse = parse(data);
-      const targetPosts = parsedResponse.items.map((item) => ({ feedId: id, ...item }));
+      const targetPosts = parsedResponse.items.map((item) => ({ ...item, feedId: id }));
       newPosts.push(...targetPosts);
     }));
 
@@ -46,9 +46,7 @@ const updateFeed = (state) => {
     const oldPosts = state.posts;
     const update = _.differenceWith(newPosts, oldPosts, _.isEqual);
 
-    if (update.length > 0) {
-      state.posts = [...update, ...state.posts];
-    }
+    state.posts.unshift(...update);
   }).finally(setTimeout(updateFeed, UPDATE_TIMING, state));
 };
 
@@ -60,10 +58,10 @@ const getData = (url, state) => {
       const parsedResponse = parse(data);
       const id = _.uniqueId();
       const newFeed = { id, url, title: parsedResponse.title };
-      const newPosts = parsedResponse.items.map((item) => ({ feedId: id, ...item }));
+      const newPosts = parsedResponse.items.map((item) => ({ ...item, feedId: id }));
 
-      state.posts = [...state.posts, ...newPosts];
-      state.feeds = [...state.feeds, newFeed];
+      state.posts.unshift(...newPosts);
+      state.feeds.unshift(newFeed);
 
       state.form.status = 'filling';
       state.netWorkError = null;
