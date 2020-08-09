@@ -44,7 +44,7 @@ const updateFeed = (state) => {
     }));
 
   Promise.all(promises).then(() => {
-    setTimeout(updateFeed, UPDATE_TIMING, state)
+    setTimeout(updateFeed, UPDATE_TIMING, state);
   });
 };
 
