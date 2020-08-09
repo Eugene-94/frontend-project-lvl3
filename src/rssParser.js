@@ -7,9 +7,9 @@ const checkParsingError = (doc) => {
 };
 
 export default (data) => {
-  const domParser = new DOMParser();
+  const rssParser = new DOMParser();
 
-  const xmlDoc = domParser.parseFromString(data, 'text/xml');
+  const xmlDoc = rssParser.parseFromString(data, 'text/xml');
 
   const isParseError = checkParsingError(xmlDoc);
 

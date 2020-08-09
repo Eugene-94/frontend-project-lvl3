@@ -6,7 +6,7 @@ import * as yup from 'yup';
 import './styles/styles.scss';
 import axios from 'axios';
 import i18next from 'i18next';
-import parse from './domParser';
+import parse from './rssParser';
 import resources from './locales';
 import watch from './watchers';
 
@@ -21,8 +21,8 @@ const getProxyUrl = (link) => {
 
 const getUrlsList = (feeds) => feeds.map(({ url }) => url);
 
-const validate = (url, schema, state) => {
-  const urlsList = getUrlsList(state.feeds);
+const validate = (url, schema, feeds) => {
+  const urlsList = getUrlsList(feeds);
   try {
     schema.notOneOf(urlsList).validateSync(url, { abortEarly: false });
     return null;
@@ -33,21 +33,19 @@ const validate = (url, schema, state) => {
 };
 
 const updateFeed = (state) => {
-  const newPosts = [];
-
   const promises = state.feeds.map(({ id, url }) => axios.get(getProxyUrl(url))
     .then(({ data }) => {
       const parsedResponse = parse(data);
       const targetPosts = parsedResponse.items.map((item) => ({ ...item, feedId: id }));
-      newPosts.push(...targetPosts);
+      const oldPosts = state.posts;
+      const update = _.differenceWith(targetPosts, oldPosts, _.isEqual);
+
+      state.posts = [...update, ...state.posts];
     }));
 
   Promise.all(promises).then(() => {
-    const oldPosts = state.posts;
-    const update = _.differenceWith(newPosts, oldPosts, _.isEqual);
-
-    state.posts.unshift(...update);
-  }).finally(setTimeout(updateFeed, UPDATE_TIMING, state));
+    setTimeout(updateFeed, UPDATE_TIMING, state)
+  });
 };
 
 const getData = (url, state) => {
@@ -60,8 +58,8 @@ const getData = (url, state) => {
       const newFeed = { id, url, title: parsedResponse.title };
       const newPosts = parsedResponse.items.map((item) => ({ ...item, feedId: id }));
 
-      state.posts.unshift(...newPosts);
-      state.feeds.unshift(newFeed);
+      state.posts.push(newPosts);
+      state.feeds.push(newFeed);
 
       state.form.status = 'filling';
       state.netWorkError = null;
@@ -101,7 +99,7 @@ const appInit = () => {
 
     const formData = new FormData(e.target);
     const url = formData.get('url');
-    const error = validate(url, schema, watchedState);
+    const error = validate(url, schema, watchedState.feeds);
 
     if (!error) {
       watchedState.form.isValid = true;
