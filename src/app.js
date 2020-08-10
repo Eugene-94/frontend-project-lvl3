@@ -36,9 +36,9 @@ const updateFeed = (state) => {
   const promises = state.feeds.map(({ id, url }) => axios.get(getProxyUrl(url))
     .then(({ data }) => {
       const parsedResponse = parse(data);
-      const targetPosts = parsedResponse.items.map((item) => ({ ...item, feedId: id }));
-      const oldPosts = state.posts;
-      const update = _.differenceWith(targetPosts, oldPosts, _.isEqual);
+      const newPosts = parsedResponse.items.map((item) => ({ ...item, feedId: id }));
+      const oldPosts = state.posts.filter(({ feedId }) => feedId === id);
+      const update = _.differenceWith(newPosts, oldPosts, _.isEqual);
 
       state.posts = [...update, ...state.posts];
     }));
